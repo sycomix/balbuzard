@@ -148,11 +148,7 @@ class Pattern (object):
         filt=None):
         self.name = name
         # self.pat should always be a list of strings:
-        if isinstance(pat, str):
-            self.pat = [pat]
-        else:
-            # else we assume it's a sequence:
-            self.pat = pat
+        self.pat = [pat] if isinstance(pat, str) else pat
         self.nocase = nocase
         if nocase:
             # transform pat to lowercase
@@ -192,7 +188,7 @@ class Pattern (object):
         return found
 
 
-    def count (self, data, data_lower=None):
+    def count(self, data, data_lower=None):
         """
         count all occurences of pattern in data.
         Except for those with single=True, only the first occurence of any
@@ -201,8 +197,6 @@ class Pattern (object):
         patterns (it's better to do it only once)
         return an integer
         """
-        #TODO: add support for filter? (will be much slower...)
-        count = 0
         if self.nocase:
             d = data_lower
             pat = self.pat_lower
@@ -210,14 +204,9 @@ class Pattern (object):
             d = data
             pat = self.pat
         if not self.single:
-            for s in pat:
-                count += d.count(s)
-            return count
+            return sum(d.count(s) for s in pat)
         else:
-            for s in pat:
-                if s in d:
-                    return 1
-            return 0
+            return next((1 for s in pat if s in d), 0)
 
 
 
@@ -240,10 +229,7 @@ class Pattern_re (Pattern):
         weight=1, filt=None):
         # first call the Pattern constructor:
         Pattern.__init__(self, name, pat, nocase, single, weight)
-        # compile regex
-        flags = 0
-        if nocase:
-            flags = re.IGNORECASE
+        flags = re.IGNORECASE if nocase else 0
         self.pat = re.compile(pat, flags)
         self.trigger = trigger
         if trigger is not None:
@@ -253,7 +239,7 @@ class Pattern_re (Pattern):
         #print 'pattern %s: filter=%s' % (self.name, self.filter)
 
 
-    def find_all (self, data, data_lower=None):
+    def find_all(self, data, data_lower=None):
         """
         find all occurences of pattern in data.
         data_lower should be set to data.lower(), if there are case-insensitive
@@ -261,10 +247,10 @@ class Pattern_re (Pattern):
         return a list of tuples (index, string)
         """
         found = []
-        if self.trigger is not None:
             # when trigger is specified, search trigger first and stop if not
             # found:
-            if self.trigger_pat.count(data, data_lower) == 0:
+        if self.trigger_pat.count(data, data_lower) == 0:
+            if self.trigger is not None:
                 return found
         for m in self.pat.finditer(data):
             valid = True
@@ -276,17 +262,17 @@ class Pattern_re (Pattern):
         return found
 
 
-    def count (self, data, data_lower=None):
+    def count(self, data, data_lower=None):
         """
         count all occurences of pattern in data.
         data_lower should be set to data.lower(), if there are case-insensitive
         patterns (it's better to do it only once)
         return an integer
         """
-        if self.trigger is not None:
             # when trigger is specified, search trigger first and stop if not
             # found:
-            if self.trigger_pat.count(data, data_lower) == 0:
+        if self.trigger_pat.count(data, data_lower) == 0:
+            if self.trigger is not None:
                 return 0
         # when no filter is defined, quickest way to count:
         if self.filter is None:
@@ -308,7 +294,7 @@ class Balbuzard (object):
 
     def __init__(self, patterns=None, yara_rules=None):
         self.patterns = patterns
-        if patterns == None:
+        if patterns is None:
             self.patterns = []
         self.yara_rules = yara_rules
 
@@ -358,7 +344,7 @@ class Balbuzard (object):
                 yield pattern, matches
         self.time = time.clock()-start
 
-    def count (self, data):
+    def count(self, data):
         """
         Scans data for all patterns. This is an iterator: for each pattern
         found, yields the Pattern object and the count as int.
@@ -366,8 +352,7 @@ class Balbuzard (object):
         # prep lowercase version of data for case-insensitive patterns
         data_lower = data.lower()
         for pattern in self.patterns:
-            count = pattern.count(data, data_lower)
-            if count:
+            if count := pattern.count(data, data_lower):
                 yield pattern, count
 
     def scan_display (self, data, filename, hexdump=False, csv_writer=None):

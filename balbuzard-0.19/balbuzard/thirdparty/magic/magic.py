@@ -884,7 +884,8 @@ magicNumbers = []
 def strToNum(n):
   val = 0
   col = long(1)
-  if n[:1] == 'x': n = '0' + n
+  if n[:1] == 'x':
+    n = f'0{n}'
   if n[:2] == '0x':
     # hex
     n = string.lower(n[2:])
@@ -892,7 +893,7 @@ def strToNum(n):
       l = n[len(n) - 1]
       val = val + string.hexdigits.index(l) * col
       col = col * 16
-      n = n[:len(n)-1]
+      n = n[:-1]
   elif n[0] == '\\':
     # octal
     n = n[1:]
@@ -901,7 +902,7 @@ def strToNum(n):
       if ord(l) < 48 or ord(l) > 57: break
       val = val + int(l) * col
       col = col * 8
-      n = n[:len(n)-1]
+      n = n[:-1]
   else:
     val = string.atol(n)
   return val
@@ -914,7 +915,7 @@ def unescape(s):
     x = m.start()+1
     if m.end() == len(s): 
       # escaped space at end
-      s = s[:len(s)-1] + ' '
+      s = f'{s[:-1]} '
     elif s[x:x+2] == '0x':
       # hex ascii value
       c = chr(strToNum(s[x:x+4]))
@@ -943,10 +944,7 @@ class magicTest:
     if t.count('&') > 0:
       mask = strToNum(t[t.index('&')+1:])  
       t = t[:t.index('&')]
-    if type(offset) == type('a'):
-      self.offset = strToNum(offset)
-    else:
-      self.offset = offset
+    self.offset = strToNum(offset) if type(offset) == type('a') else offset
     self.type = t
     self.msg = msg
     self.subTests = []
@@ -958,16 +956,8 @@ class magicTest:
   def test(self, data):
     if self.mask:
       data = data & self.mask
-    if self.op == '=': 
-      if self.value == data: return self.msg
-    elif self.op ==  '<':
-      pass
-    elif self.op ==  '>':
-      pass
-    elif self.op ==  '&':
-      pass
-    elif self.op ==  '^':
-      pass
+    if self.value == data:
+      if self.op == '=': return self.msg
     return None
 
   def compare(self, data):
@@ -992,12 +982,9 @@ class magicTest:
         [data] = struct.unpack('<l', data[self.offset : self.offset + 4])
       elif self.type == 'belong':
         [data] = struct.unpack('>l', data[self.offset : self.offset + 4])
-      else:
-        #print 'UNKNOWN TYPE: ' + self.type
-        pass
     except:
       return None
-  
+
 #    print str([self.msg, self.value, data])
     return self.test(data)
     
@@ -1073,8 +1060,8 @@ def load(file):
 
 def whatis(data):
   for test in magicNumbers:
-     m = test.compare(data)
-     if m: return m
+    if m := test.compare(data):
+      return m
   # no matching, magic number. is it binary or text?
   for c in data:
     if ord(c) > 128:

@@ -118,8 +118,7 @@ def riglob(top, prefix='', pattern='*'):
         dtop = os.path.join(top, d)
         dprefix = os.path.join(prefix, d)
         #print 'dtop=%s dprefix=%s' % (dtop, dprefix)
-        for p in riglob(dtop, dprefix, pattern):
-            yield p
+        yield from riglob(dtop, dprefix, pattern)
 
 def rglob(top, prefix='', pattern='*'):
     """
@@ -229,8 +228,7 @@ package_data={
 
 def main():
     if sys.version >= '3.0':
-        s = "Sorry, %s %s requires Python 2.x."
-        print(s % (name, version))
+        print(f"Sorry, {name} {version} requires Python 2.x.")
         sys.exit(1)
 ##    if sys.version < required_python_version:
 ##        s = "I'm sorry, but %s %s requires Python %s or later."

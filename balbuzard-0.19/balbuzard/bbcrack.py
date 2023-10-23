@@ -259,10 +259,9 @@ class Transform_XOR (Transform_char):
         return chr(ord(char) ^ self.params)
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         # the XOR key can be 1 to 255 (0 would be identity)
-        for key in xrange(1,256):
-            yield key
+        yield from xrange(1,256)
 
 
 #------------------------------------------------------------------------------
@@ -292,10 +291,9 @@ class Transform_XOR_INC (Transform_string):
         return out
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         # the XOR key can be 0 to 255 (0 is not identity here)
-        for xor_key in xrange(0,256):
-            yield xor_key
+        yield from xrange(0,256)
 
 
 #------------------------------------------------------------------------------
@@ -325,10 +323,9 @@ class Transform_XOR_DEC (Transform_string):
         return out
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         # the XOR key can be 0 to 255 (0 is not identity here)
-        for xor_key in xrange(0,256):
-            yield xor_key
+        yield from xrange(0,256)
 
 
 #------------------------------------------------------------------------------
@@ -398,10 +395,9 @@ class Transform_SUB_INC (Transform_string):
         return out
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         # the SUB key can be 0 to 255 (0 is not identity here)
-        for key in xrange(0,256):
-            yield key
+        yield from xrange(0,256)
 
 
 def rol(byte, count):
@@ -446,10 +442,9 @@ class Transform_XOR_Chained (Transform_string):
         return out
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         # the XOR key can be 0 to 255 (0 is not identity here)
-        for xor_key in xrange(0,256):
-            yield xor_key
+        yield from xrange(0,256)
 
 
 #------------------------------------------------------------------------------
@@ -469,27 +464,23 @@ class Transform_XOR_RChained (Transform_string):
         self.name = "XOR %02X RChained" % params
         self.shortname = "xor%02X_rchained" % params
 
-    def transform_string (self, data):
+    def transform_string(self, data):
         # here params is an integer
         #TODO: it would be much faster to do the xor_rchained once, then all
         #      xor transforms using translate() only
         #TODO: use a list comprehension + join to get better performance
         # this loop is more readable, but likely to  be much slower
         if len(data) == 0: return ''
-        out = ''
         xor_key = self.params
-        # all chars except last one are xored with key and next char:
-        for i in xrange(len(data)-1):
-            out += chr(ord(data[i]) ^ xor_key ^ ord(data[i+1]))
-        # last char is just xored with key:
-        out += chr(ord(data[len(data)-1]) ^ xor_key)
-        return out
+        return ''.join(
+            chr(ord(data[i]) ^ xor_key ^ ord(data[i + 1]))
+            for i in xrange(len(data) - 1)
+        ) + chr(ord(data[len(data) - 1]) ^ xor_key)
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         # the XOR key can be 0 to 255 (0 is not identity here)
-        for xor_key in xrange(0,256):
-            yield xor_key
+        yield from xrange(0,256)
 
 
 #------------------------------------------------------------------------------
@@ -512,7 +503,7 @@ class Transform_XOR_RChainedAll (Transform_string):
         self.name = "XOR %02X RChained All" % params
         self.shortname = "xor%02X_rchained_all" % params
 
-    def transform_string (self, data):
+    def transform_string(self, data):
         # here params is an integer
         #TODO: it would be much faster to do the xor_rchained once, then all
         #      xor transforms using translate() only
@@ -529,14 +520,12 @@ class Transform_XOR_RChainedAll (Transform_string):
         l[len(data)-1] = l[len(data)-1] ^ xor_key
         # convert back to list of chars:
         l = map(chr, l)
-        out = ''.join(l)
-        return out
+        return ''.join(l)
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         # the XOR key can be 0 to 255 (0 is not identity here)
-        for xor_key in xrange(0,256):
-            yield xor_key
+        yield from xrange(0,256)
 
 
 #------------------------------------------------------------------------------
@@ -559,11 +548,10 @@ class Transform_ROL (Transform_char):
         return chr(rol(ord(char), rol_bits))
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         "return (ROL bits)"
         # the ROL bits can be 1 to 7:
-        for rol_bits in xrange(1,8):
-            yield rol_bits
+        yield from xrange(1,8)
 
 
 #------------------------------------------------------------------------------
@@ -615,11 +603,10 @@ class Transform_ADD (Transform_char):
         return chr((ord(char) + add_key) & 0xFF)
 
     @staticmethod
-    def iter_params ():
+    def iter_params():
         "return ADD key"
         # the ADD key can be 1 to 255 (0 would be identity):
-        for add_key in xrange(1,256):
-            yield add_key
+        yield from xrange(1,256)
 
 
 #------------------------------------------------------------------------------
@@ -797,7 +784,7 @@ def list_transforms ():
     sys.exit()
 
 
-def select_transforms (level=2, incremental_level=None, transform_names=None):
+def select_transforms(level=2, incremental_level=None, transform_names=None):
     """
     Select transform based on options, by order or precedence:
     - transform_names: str, comma-separated list of transform ids
@@ -810,32 +797,33 @@ def select_transforms (level=2, incremental_level=None, transform_names=None):
         transform_classes = []
         trans_names = transform_names.split(',')
         for tname in trans_names:
-            for trans in transform_classes_all:
-                if trans.gen_id == tname:
-                    transform_classes.append(trans)
+            transform_classes.extend(
+                trans
+                for trans in transform_classes_all
+                if trans.gen_id == tname
+            )
         # check if any transform was found:
-        if len(transform_classes) == 0:
-            sys.exit('Transform "%s" does not exist. Use "-t list" to see all available transforms.' % options.transform)
+        if not transform_classes:
+            sys.exit(
+                f'Transform "{options.transform}" does not exist. Use "-t list" to see all available transforms.'
+            )
         return transform_classes
 
     # then incremental level:
     if incremental_level is not None:
-        if   incremental_level == 1:
-            transform_classes = transform_classes1
+        if incremental_level == 1:
+            return transform_classes1
         elif incremental_level == 2:
-            transform_classes = transform_classes2
+            return transform_classes2
         else:
-            transform_classes = transform_classes3
-        return transform_classes
-
+            return transform_classes3
     # otherwise, simple level:
     if level == 1:
-        transform_classes = transform_classes1
+        return transform_classes1
     elif level == 2:
-        transform_classes = transform_classes1 + transform_classes2
+        return transform_classes1 + transform_classes2
     else:
-        transform_classes = transform_classes_all
-    return transform_classes
+        return transform_classes_all
 
 
 def read_file(filename, zip_password=None):
